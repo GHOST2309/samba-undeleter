@@ -431,6 +431,40 @@ def do_recovery(line):
         Save_recovered(UNDELETER_LOG, line)
 
     return status
+
+
+def handleArgs():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--unsecure', action='store_true',
+                        default=False,
+                        help='Skip MAC confinement check. Strongly discouraged')
+
+    args = parser.parse_args()
+
+    return args
+
+
+def failIfNotConfined(profileBasename):
+    '''Attempt to create unpredictably named file to determine if process is confined by any MAC.
+       Only covers confinement, not necessarily enforcement'''
+    randomTail = ''.join(random.choice(string.ascii_letters) for i in range(8))
+    path = f'/dev/shm/{profileBasename}.am_i_confined.{randomTail}'
+
+    try:
+        with open(path, 'w') as f:
+            f.write("DELETEME\n")
+    except Exception:  # expected behavior
+        pass
+
+    f = pathlib.Path(path)
+    if f.is_file():
+        f.unlink()
+        raise EnvironmentError(f'''The process is not confined by AppArmor. Refusing to function. Expected action:\n
+$ sudo install -m 600 -o root -g root apparmor.d/{profileBasename} /etc/apparmor.d/
+$ sudo apparmor_parser --add /etc/apparmor.d/{profileBasename}''')
+
+    return None
                 
 
 def Listen(server_class=HTTPServer, handler_class=HttpGetHandler):
@@ -444,4 +478,9 @@ def Listen(server_class=HTTPServer, handler_class=HttpGetHandler):
 
 
 if __name__ == '__main__':
+
+    args = handleArgs()
+    if not args.unsecure:
+        failIfNotConfined(pathlib.Path(sys.argv[0]).stem)
+
     Listen()
