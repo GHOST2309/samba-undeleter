@@ -9,14 +9,14 @@ import json
 import tkinter as tk
 #from datetime import datetime
 from tkinter import ttk, messagebox, StringVar
-from PIL import Image, ImageTk
+#from PIL import Image, ImageTk
 import os
 from copy import deepcopy
 import urllib.request
 from urllib.parse import quote 
 
 
-SERVER = '192.168.76.128'
+SERVER = '192.168.76.128' # default entry
 PORT = 999 #lower port for running as root
 LOGO_PATH = "./image.png"
 #RECOVERED_INDEXES = set() 
@@ -41,7 +41,7 @@ def search_call(client_query):
     '''Make GET HTTP call to server with URL as query'''
     try:
         encoded_query = quote(client_query, safe='', encoding='utf-8')
-        url = f"http://{SERVER}:{PORT}/search/{encoded_query}"
+        url = f"http://{server_addr.get().strip()}:{PORT}/search/{encoded_query}"
         server_response_obj = urllib.request.urlopen(url)
         response_code = server_response_obj.getcode()
         print("\nCODE:", response_code)
@@ -66,7 +66,7 @@ def search_call(client_query):
 
 def restore_call(restore_timestamp):
     '''Make POST HTTP call to server with timestamp as payload for recovery'''
-    url = f"http://{SERVER}:{PORT}/recover/"
+    url = f"http://{server_addr.get().strip()}:{PORT}/recover/"
     req = urllib.request.Request(url, method='POST')
     req.add_header('Content-Type', 'application/json')
 
@@ -102,6 +102,10 @@ def restore_call(restore_timestamp):
     return server_answer
         
 def search(search_name):
+    SERVER = server_addr.get().strip() 
+    server_addr.pack(side=tk.LEFT, padx=5)
+    root.update_idletasks()
+    print("SERVER", SERVER)
     global FOUND_LINES 
     if not search_name:
         messagebox.showwarning(_("Warning"), _("Please enter the search query!"))
@@ -538,9 +542,11 @@ if __name__ == '__main__':
     logo_label_widget = None
     if os.path.exists(LOGO_PATH):
         try:
-            img = Image.open(LOGO_PATH)
-            img = img.resize((80, 80), Image.Resampling.LANCZOS)
-            bb_img = ImageTk.PhotoImage(img)
+            #img = Image.open(LOGO_PATH)
+            #img = img.resize((80, 80), Image.Resampling.LANCZOS)
+            #widget = tk.Label(root, compound='top')
+            bb_img = tk.PhotoImage(file="image.png")
+            #bb_img = ImageTk.PhotoImage(img)
 
             logo_label_widget = tk.Label(frame_top, image=bb_img, background="#00008B")
             logo_label_widget.image = bb_img 
@@ -566,6 +572,14 @@ if __name__ == '__main__':
     button_restore = ttk.Button(frame_top, text=_("Recover"), command=restore) 
     button_restore.pack(side=tk.LEFT, padx=5)
     button_restore.config(state=tk.DISABLED) 
+    
+    # Server selection
+    server_addr = ttk.Entry(frame_top, width=50, state="normal")
+    server_addr.insert(0, SERVER)
+    #print("INPUT TEXT", server_addr.get().strip())
+    server_addr.pack(side=tk.LEFT, padx=5)
+    #SERVER = server_addr.get().strip()
+    print("SERVER", SERVER)
 
     # Search results
     tree_frame = tk.Frame(root)
