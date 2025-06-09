@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+@{exec_path} = /{,usr/}{,local/}bin/undeleter{,.py}
+@{shares} = /storage/public
+
+profile undeleter @{exec_path} {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+#  include <abstractions/nameservice-strict>
+  include <abstractions/consoles>
+  include <abstractions/python>
+
+  capability net_bind_service,
+#  capability dac_read_search,
+#  capability fowner,
+#  capability fsetid,
+#  capability dac_override,
+
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+
+  @{exec_path} r,
+
+  @{shares}/** rw,
+
+  /{,usr/}bin/python3.[0-9]{,[0-9]} rix,
+  /{,usr/}bin/env rix,
+  /{,usr/}bin/id rix,
+
+#  /{,usr/}bin/smbstatus rPUx,
+#  /{,usr/}bin/wbinfo rPUx,
+
+  /var/log/samba/audit.log r,
+  /var/log/samba/undeleter_recovered.log rw,
+
+  deny /{dev/shm,tmp}/undeleter.am_i_confined.???????? w, # silence the check
+  deny /usr/{,local/}bin/ r,
+
+  # apport debug hook from OS
+  # (/etc/python3.10/sitecustomize.py)
+  deny /etc/default/apport r,
+  deny /etc/ssl/openssl.cnf r,
+  deny /etc/apt/apt.conf.d/{,*} r,
+  deny /usr/share/dpkg/cputable r,
+  deny /usr/share/dpkg/tupletable r,
+
+  include if exists <local/undeleter>
+}
+
+# vim:syntax=apparmor
