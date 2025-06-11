@@ -9,7 +9,6 @@ import json
 import tkinter as tk
 #from datetime import datetime
 from tkinter import ttk, messagebox, StringVar
-#from PIL import Image, ImageTk
 import os
 from copy import deepcopy
 import urllib.request
@@ -322,6 +321,7 @@ def _(s):
         "Search finished. Found entries:": "Search finished. Found entries:",
         "Search error": "Search error",
         "Error": "Error",
+        "Server:": "Server:",
         "Warning": "Warning", 
         "Select the row for recovery": "Select the row for recovery",
         "Already recovered": "Already recovered",
@@ -374,6 +374,7 @@ def _(s):
         "Search finished. Found entries:": "Поиск завершен. Найдено записей:",
         "Search error": "Ошибка поиска",
         "Error": "Ошибка",
+        "Server:": "Сервер:",
         "Warning": "Предупреждение",
         "Select the row for recovery": "Выберите строку для восстановления!",
         "Already recovered": "Уже восстановлено",
@@ -426,6 +427,7 @@ def _(s):
         "Search error": "Fehler bei der Suche",
         "Error": "Fehler",
         "Warning": "Warnung",
+        "Server:": "Server:",
         "Select the row for recovery": "Wählen Sie die Zeile zur Wiederherstellung aus!", 
         "Already recovered": "Bereits wiederhergestellt",
         "Try to recover again?": "Erneut versuchen, wiederherzustellen?",
@@ -494,7 +496,7 @@ def _(s):
 
 def change_language(event=None):
     '''Change language via combobox'''
-    global LANGUAGE, FOUND_LINES, lang_var, root, label_exact_name, button_search, button_restore, info_display_var, tv, lang_combobox
+    global LANGUAGE, FOUND_LINES, lang_var, root, label_exact_name, button_search, button_restore, info_display_var, tv, lang_combobox, server_text
 
     selected_language_key = lang_var.get() 
 
@@ -508,6 +510,7 @@ def change_language(event=None):
     root.title(_("Undeleter client"))
    
     label_exact_name.config(text=_("Exact file/folder name:"))
+    server_text.config(text=_("Server:"))
     button_search.config(text=_("Search"))
     button_restore.config(text=_("Recover"))
     info_display_var.set(_("Ready to work"))
@@ -574,6 +577,8 @@ if __name__ == '__main__':
     button_restore.config(state=tk.DISABLED) 
     
     # Server selection
+    server_text = ttk.Label(frame_top, text=_("Server:"), foreground="white", background="#00008B")
+    server_text.pack(side=tk.LEFT, padx=5)
     server_addr = ttk.Entry(frame_top, width=50, state="normal")
     server_addr.insert(0, SERVER)
     #print("INPUT TEXT", server_addr.get().strip())
