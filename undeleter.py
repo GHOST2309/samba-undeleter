@@ -18,6 +18,8 @@ import pathlib
 import ast
 import pickle
 import copy
+import stat
+import shutil
 import fcntl
 import struct
 import subprocess
@@ -33,10 +35,10 @@ from urllib.parse import unquote
 
 HOST = '0.0.0.0'
 PORT = 999 
-MODE = 0o775 
 AUDIT_LOG = "/var/log/samba/audit.log"
 UNDELETER_LOG = "/var/log/samba/undeleter_recovered.log"
 RECOVER_GROUPS = ["teachers"]
+SHARE_PATH = "/srv/public"
 LANGUAGE = "English"
 RENAMEAT = "renameat"
 UNLINKAT = "unlinkat"
@@ -124,13 +126,13 @@ def find_by_timestamp(query, file_name):
     return recovery_line
     
     
-def Recover(original_path_str, mode):
+def Recover(original_path_str):
     '''Try to recover(move) file from recycle directory'''
     message = {"info": _("Not recovered")}
     recycle_dir = ".recycle"
     original_path = pathlib.Path(original_path_str)
     found_path = pathlib.Path(original_path.parents[0], pathlib.Path(recycle_dir), original_path.name)
-    is_success = Move(original_path, found_path, mode)
+    is_success = Move(original_path, found_path)
     if is_success:
         message = {"info": _("Recovered"),
                    "found_path": str(found_path)}
@@ -139,12 +141,12 @@ def Recover(original_path_str, mode):
     return message
     
 
-def Rename(original_path_str, found_path_str, mode):
+def Rename(original_path_str, found_path_str):
     '''Try to rename(move) accidentally missplaced file from another directory'''
     message = {"info": _("Not renamed")}
     original_path = pathlib.Path(original_path_str)
     found_path = pathlib.Path(found_path_str)
-    is_success = Move(original_path, found_path, mode)
+    is_success = Move(original_path, found_path)
     if is_success:
         message = {"info": _("Renamed"),
                    "found_path": str(found_path)}
@@ -152,19 +154,35 @@ def Rename(original_path_str, found_path_str, mode):
     return message
     
     
-def Move(original_path, found_path, mode):
-    '''Agnostic file/dir mover'''
+def Move(original_path, found_path):
+    '''Agnostic file/dir mover''' 
     is_success = False
     if found_path.exists():
         if original_path.parent:
-            original_path.parent.mkdir(mode, parents=True, exist_ok=True) #create nested directory tree 
+            original_path.parent.mkdir(parents=True, exist_ok=True) #create nested directory tree 
         if not original_path.exists():
-            found_path.chmod(mode)
+            #found_path.chmod(mode) # TODO nested files and directories
             found_path.rename(original_path)
             is_success = True
-
+        
+        Copy_perms(original_path)
+        
     return is_success
-  
+       
+       
+def Copy_perms(recovered_path):
+    reference_path = pathlib.Path(SHARE_PATH)
+    shutil.copystat(reference_path, recovered_path)
+    for path in recovered_path.rglob("*"):
+
+        try:
+            shutil.copystat(reference_path, path)
+
+        except FileNotFoundError:
+            print("Error: The source or destination directory does not exist.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
 
 def Find_dir(single_dict, is_allowed):
     split_path = None
@@ -418,10 +436,10 @@ def do_recovery(line):
         if not line.get("targetname"):
             reply = {"info": "targetname is not provided BY THE CLIENT"} #TODO move to child function
         else:
-            reply = Rename(line.get("sourcename"), line.get("targetname"), MODE)
+            reply = Rename(line.get("sourcename"), line.get("targetname"))
         status = {"status": reply}
     elif line.get("operation") == UNLINKAT and line.get("status") == "ok":
-        recover_reply = Recover(line.get("sourcename"), MODE)
+        recover_reply = Recover(line.get("sourcename"))
         if recover_reply:
             status = {"status": recover_reply}
     else:
@@ -482,5 +500,6 @@ if __name__ == '__main__':
     args = handleArgs()
     if not args.unsecure:
         failIfNotConfined(pathlib.Path(sys.argv[0]).stem)
-
+    
     Listen()
+    
