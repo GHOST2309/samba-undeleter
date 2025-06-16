@@ -1,0 +1,17 @@
+[Unit]
+Description=Undeleter service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+#Group=
+#PIDFile=
+#ExecStartPre=
+ExecStart=/usr/local/bin/undeleter.py
+#ExecReload=
+#ExecStop=
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
