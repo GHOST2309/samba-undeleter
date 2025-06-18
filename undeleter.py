@@ -38,7 +38,7 @@ PORT = 999
 AUDIT_LOG = "/var/log/samba/audit.log"
 UNDELETER_LOG = "/var/log/samba/undeleter_recovered.log"
 RECOVER_GROUPS = ["teachers"]
-SHARE_PATH = "/srv/public"
+SHARE_PATH = "/storage/public"
 LANGUAGE = "English"
 RENAMEAT = "renameat"
 UNLINKAT = "unlinkat"
@@ -131,7 +131,11 @@ def Recover(original_path_str):
     message = {"info": _("Not recovered")}
     recycle_dir = ".recycle"
     original_path = pathlib.Path(original_path_str)
-    found_path = pathlib.Path(original_path.parents[0], pathlib.Path(recycle_dir), original_path.name)
+    #found_path = pathlib.Path(original_path.parents[0], pathlib.Path(recycle_dir), original_path.name)
+    deleted_dir = original_path_str.removeprefix(SHARE_PATH).removeprefix('/')
+    print(deleted_dir)
+    found_path = pathlib.Path(pathlib.Path(SHARE_PATH), pathlib.Path(recycle_dir), pathlib.Path(deleted_dir))
+    print(original_path, found_path)
     is_success = Move(original_path, found_path)
     if is_success:
         message = {"info": _("Recovered"),
@@ -157,11 +161,11 @@ def Rename(original_path_str, found_path_str):
 def Move(original_path, found_path):
     '''Agnostic file/dir mover''' 
     is_success = False
+    
     if found_path.exists():
         if original_path.parent:
             original_path.parent.mkdir(parents=True, exist_ok=True) #create nested directory tree 
         if not original_path.exists():
-            #found_path.chmod(mode) # TODO nested files and directories
             found_path.rename(original_path)
             is_success = True
         
