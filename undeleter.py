@@ -10,24 +10,15 @@
 
 import re
 import sys
-import socket
-import select
-import time
 import json
 import pathlib
-import ast
-import pickle
 import copy
-import stat
 import shutil
-import fcntl
-import struct
 import subprocess
-import shlex
 import argparse
 import random
 import string
-from datetime import datetime
+#from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 from http.server import HTTPServer
 from urllib.parse import unquote
@@ -38,14 +29,16 @@ PORT = 999
 AUDIT_LOG = "/var/log/samba/audit.log"
 UNDELETER_LOG = "/var/log/samba/undeleter_recovered.log"
 RECOVER_GROUPS = ["teachers"]
-SHARE_PATH = "/storage/public"
+SHARE_PATH = "/srv/public"
+RECYLCE_DIR = ".recycle"
 LANGUAGE = "English"
 RENAMEAT = "renameat"
 UNLINKAT = "unlinkat"
 
-#regex function   
+
+   
 def Read_log(query, file_name):
-    #print("INPUT", query)
+    '''Read Samba vfs audit log to search for deleted/moved files/folders'''
     maxIndex = 7 # 7 is targetname
     parced_lines = []
     unparced_lines = []
@@ -54,7 +47,6 @@ def Read_log(query, file_name):
             try:
                 single_line = {}
                 parts = line.split('|')
-                #print("PARTS", parts)
                 prefix = parts.pop(0)
                 domain_and_user = re.sub('.+smbd_audit: (.+)', r'\1', prefix).partition('\\')
                 time = prefix.split(' ')[0]
@@ -75,21 +67,20 @@ def Read_log(query, file_name):
                     single_line["targetname"] = parts[maxIndex-1].strip()
     
                 parced_lines.append(single_line)
-                #print(single_line)
             except IndexError:
                 continue
  
     found_lines = []
     look_for = "/" + query
     for i in parced_lines:
-        if  i["sourcename"].strip().endswith(look_for):
+        if i["sourcename"].strip().endswith(look_for):
             found_lines.append(i)
-    #print("RESULT", f'"{found_lines}"')
 
     return found_lines
     
+    
 def find_by_timestamp(query, file_name):
-    #print("INPUT", query)
+    '''Read Samba vfs audit log to search line by provided timestamp'''
     maxIndex = 7 # 7 is targetname
     recovery_line = {}
     with open(file_name, "r", encoding='utf-8') as file:
@@ -97,7 +88,6 @@ def find_by_timestamp(query, file_name):
             try:
                 single_line = {}
                 parts = line.split('|')
-                #print("PARTS", parts)
                 prefix = parts.pop(0)
                 domain_and_user = re.sub('.+smbd_audit: (.+)', r'\1', prefix).partition('\\')
                 time = prefix.split(' ')[0]
@@ -119,7 +109,6 @@ def find_by_timestamp(query, file_name):
                 if time == query:
                     recovery_line = single_line
                     break # found
-                #print(single_line)
             except IndexError:
                 continue
  
@@ -129,13 +118,9 @@ def find_by_timestamp(query, file_name):
 def Recover(original_path_str):
     '''Try to recover(move) file from recycle directory'''
     message = {"info": _("Not recovered")}
-    recycle_dir = ".recycle"
     original_path = pathlib.Path(original_path_str)
-    #found_path = pathlib.Path(original_path.parents[0], pathlib.Path(recycle_dir), original_path.name)
     deleted_dir = original_path_str.removeprefix(SHARE_PATH).removeprefix('/')
-    print(deleted_dir)
-    found_path = pathlib.Path(pathlib.Path(SHARE_PATH), pathlib.Path(recycle_dir), pathlib.Path(deleted_dir))
-    print(original_path, found_path)
+    found_path = pathlib.Path(pathlib.Path(SHARE_PATH), pathlib.Path(RECYLCE_DIR), pathlib.Path(deleted_dir))
     is_success = Move(original_path, found_path)
     if is_success:
         message = {"info": _("Recovered"),
@@ -162,26 +147,40 @@ def Move(original_path, found_path):
     '''Agnostic file/dir mover''' 
     is_success = False
     
+    recycle_absolute = pathlib.Path(SHARE_PATH, RECYLCE_DIR)
+    print("RECYCLE ABSOLUT", recycle_absolute)
+    
+    is_deleted = False
+    if str(found_path).startswith(str(recycle_absolute)):        
+        is_deleted = True
+    
     if found_path.exists():
         if original_path.parent:
             original_path.parent.mkdir(parents=True, exist_ok=True) #create nested directory tree 
         if not original_path.exists():
             found_path.rename(original_path)
+            if is_deleted:
+                Copy_perms(original_path)
             is_success = True
-        
-        Copy_perms(original_path)
-        
+        else:
+            randomTail = ''.join(random.choice(string.ascii_letters) for i in range(8))
+            new_original_path = pathlib.Path(str(original_path) + "." + randomTail)
+            found_path.rename(new_original_path)
+            if is_deleted:
+                Copy_perms(new_original_path)
+            is_success = True
+   
     return is_success
        
        
 def Copy_perms(recovered_path):
+    '''Read permissions from share root(SHARE_PATH) and apply to recovered directory'''
     reference_path = pathlib.Path(SHARE_PATH)
     shutil.copystat(reference_path, recovered_path)
+    
     for path in recovered_path.rglob("*"):
-
         try:
             shutil.copystat(reference_path, path)
-
         except FileNotFoundError:
             print("Error: The source or destination directory does not exist.")
         except Exception as e:
@@ -204,7 +203,6 @@ def Save_recovered(file_path, recovered_dict):
         print(f'Opening {p}')
         with p.open("a", newline="\n", encoding="UTF-8") as f:
             dumps = json.dumps(recovered_dict)
-            #print("DUMPS", dumps)
             f.write(dumps + "\n") #instead of string, for in keys and items, confirm string, key = value f'{key}={value}'
             
             result = True
@@ -212,8 +210,6 @@ def Save_recovered(file_path, recovered_dict):
     except PermissionError:
         result = False
         
-    #print("APPENDED TEXT", p.read_text())
-    
     return result
 
 
@@ -504,6 +500,9 @@ if __name__ == '__main__':
     args = handleArgs()
     if not args.unsecure:
         failIfNotConfined(pathlib.Path(sys.argv[0]).stem)
+    
+    if not pathlib.Path(SHARE_PATH).exists():
+        raise EnvironmentError("No such share:", SHARE_PATH)
     
     Listen()
     
