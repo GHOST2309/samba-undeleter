@@ -22,6 +22,6 @@ systemctl start undeleter.service
 ```
 Install and load AppArmor profile
 ```
-mv undeleter /etc/apparmor.d/undeleter
+mv etc/apparmor.d/undeleter /etc/apparmor.d/undeleter
 apparmor_parser --add /etc/apparmor.d/undeleter
 ```
