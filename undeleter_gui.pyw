@@ -17,23 +17,18 @@ from urllib.parse import quote
 
 SERVER = '192.168.76.128' # default entry
 PORT = 999 #lower port for running as root
-LOGO_PATH = "./image.png"
+LOGO_PATH = "./logo.png"
 #RECOVERED_INDEXES = set() 
 FOUND_LINES = [] #Stores result of last search
 RENAMEAT = "renameat" #Realese specific system call for renaming (moving)
 UNLINKAT = "unlinkat" #Realese specific system call for deleting
 PATH_TO_SHARE = {"/srv/public": "P:",
                  "/storage/public": "P:",
-                } # Map paths to share letters for convenience 
+                } # Visualy map paths to share letters for convenience 
 
+LANGUAGES = ["English", "Russian", "German"] # See underscore _() function
 
-LANGUAGES = {
-    "English": "English", 
-    "Russian": "Русский",
-    "German": "Deutsch"
-}# See underscore _() function
-
-LANGUAGE = "Russian" #Language by default
+LANGUAGE = "English" #Language by default
 
 
 def search_call(client_query):
@@ -126,8 +121,6 @@ def search(search_name):
         info_display_var.set(_("Search error"))
     root.update_idletasks()
     
-    
-
 
 def restore():
     global FOUND_LINES, tv, button_restore, info_display_var, root
@@ -149,7 +142,7 @@ def restore():
     original_time_value = None
     try:
         time_column_header = _("time")
-        column_headers = list(tv["columns"]) # Убедимся, что это список
+        column_headers = list(tv["columns"]) # Ensure it is a list
         time_column_index = -1
         if time_column_header in column_headers:
             time_column_index = column_headers.index(time_column_header)
@@ -232,7 +225,7 @@ def create_treeview(data_list):
         return
         
     default_keys_order = ['sourcename', 'targetname', 'operation', 'client', 'time']
-    display_columns_translated = [_ (key) for key in default_keys_order] # Заголовки столбцов (переведенные)
+    display_columns_translated = [_ (key) for key in default_keys_order] #Translated column names
 
     if not data_list: 
         tv["columns"] = display_columns_translated
@@ -278,19 +271,19 @@ def create_treeview(data_list):
             tv.heading(col_display_text, text=col_display_text, anchor='w')
         return
 
-    # Ключи для извлечения данных из item_data в правильном порядке для отображения
-    # `operation_display` содержит уже переведенное значение операции
+    #Keys for extracting data from item_data in expected presedance
+    #'operation_display' contains already translated operations
     keys_for_data_extraction = ['sourcename', 'targetname', 'operation_display', 'client', 'time']
 
     tv["columns"] = display_columns_translated
     tv.column("#0", width=0, stretch=tk.NO) 
-    for key_orig, header_text in zip(default_keys_order, display_columns_translated): # Используем default_keys_order для определения ширины
+    for key_orig, header_text in zip(default_keys_order, display_columns_translated): # Using default_keys_order to determine column width
         width = 250 if key_orig in ['sourcename', 'targetname'] else (180 if key_orig == 'time' else 120)
         tv.column(header_text, width=width, minwidth=80, anchor="w", stretch=tk.YES)
         tv.heading(header_text, text=header_text, anchor='w')
     
-    # Сортировка данных: сначала самые новые (по времени)
-    # Предполагаем, что поле 'time' содержит ISO-совместимую строку времени
+    # Data sorting: new data comes first (by time)
+    # Expecting that field 'time' contains ISO-compatable time string
     try:
         data_list_processed.sort(key=lambda x: x.get('time', ''), reverse=True)
     except Exception as e:
@@ -299,7 +292,7 @@ def create_treeview(data_list):
 
     for item_data in data_list_processed: 
         row_values = []
-        for key in keys_for_data_extraction: # Извлекаем значения по ключам
+        for key in keys_for_data_extraction: # Extracting values by keys
             row_values.append(item_data.get(key, '')) 
         
         item_tags = []
@@ -310,62 +303,10 @@ def create_treeview(data_list):
         
     tv.tag_configure("recovered", background="light grey")
 
-# --- Функция перевода строк ---
-def _(s):
-    global LANGUAGE # Убедимся, что используем глобальную переменную
 
-    english_strings = {
-        "Undeleter client": "Undeleter client",
-        "Please enter the search query!": "Please enter the search query!",
-        "Searching for:": "Searching for:",
-        "Search finished. Found entries:": "Search finished. Found entries:",
-        "Search error": "Search error",
-        "Error": "Error",
-        "Server:": "Server:",
-        "Warning": "Warning", 
-        "Select the row for recovery": "Select the row for recovery",
-        "Already recovered": "Already recovered",
-        "Try to recover again?": "Try to recover again?",
-        "This item is marked as recovered. Try to recover again?": "This item is marked as recovered. Try to recover again?",
-        "Recovery canceled": "Recovery canceled.",
-        "Recovery result:": "Recovery result:",
-        "Successfully recovered:": "Successfully recovered:",
-        "Item was already recovered:": "Item was already recovered:",
-        "Recovery failed or status:": "Recovery failed or status:",
-        "Details:": "Details:",
-        "Unknown error:": "Unknown error:",
-        "Unable to load table data": "Unable to load table data",
-        "Unable to load table data or data is invalid": "Unable to load table data or data is invalid",
-        "Search": "Search",
-        "Recover": "Recover",
-        "Exit": "Exit",
-        "Ready to work": "Ready to work",
-        "Exact file/folder name:": "Exact file/folder name:",
-        "File not found:": "File not found:", 
-        "Error loading the image:": "Error loading the image:",
-        "moved": "moved", # значение для операции
-        "deleted": "deleted", # значение для операции
-        "time": "Time", 
-        "client": "Client", 
-        "operation": "Operation", 
-        "sourcename": "Source Path", 
-        "targetname": "Target Path", 
-        "No matches found": "No matches found", 
-        "Unable to connect (search)": "Unable to connect (search)",
-        "Error decoding server response": "Error decoding server response",
-        "An unexpected error occurred during search": "An unexpected error occurred during search",
-        "Unable to connect (restore)": "Unable to connect (restore)",
-        "Selected row has no data.": "Selected row has no data.",
-        "Could not find time column for restoration.": "Could not find time column for restoration.",
-        "Error processing selected row for restoration.": "Error processing selected row for restoration.",
-        "Could not determine timestamp for restoration.": "Could not determine timestamp for restoration.",
-        "Attempting to restore item from time:": "Attempting to restore item from time:",
-        "Unknown status": "Unknown status",
-        "Unknown error or invalid response from server during recovery.": "Unknown error or invalid response from server during recovery.",
-        "Search error or no results": "Search error or no results",
-        "Non-JSON response from server": "Non-JSON response from server",
-        "Server error code:": "Server error code:",
-    }
+def _(s):
+    '''Translate incoming string'''
+    global LANGUAGE # Ensure we are using global variable
 
     russianStrings = {
         "Undeleter client": "Клиент Undeleter",
@@ -472,26 +413,19 @@ def _(s):
         "Server error code:": "Server-Fehlercode:",
     }
     
-    active_translation_map = english_strings 
-
-    if LANGUAGE == 'English':
-        active_translation_map = english_strings
-    elif LANGUAGE == 'Russian':
-        active_translation_map = russianStrings
-    elif LANGUAGE == 'German': 
-        active_translation_map = deutschStrings
     
-    translated = active_translation_map.get(s)
-    if translated is not None:
-        return translated
-    else:
-        fallback_translated = english_strings.get(s)
-        if fallback_translated is not None:
-            print(f"Translation missing for '{s}' in {LANGUAGE}, using English fallback.")
-            return fallback_translated
+    try:
+        if LANGUAGE == 'English' or not LANGUAGE:
+            return s
+        elif LANGUAGE == 'German':
+            return deutschStrings[s]
+        elif LANGUAGE == 'Russian':
+            return russianStrings[s]
         else:
-            print(f"Untracked string for translation: '{s}' (Language: {LANGUAGE})")
-            return f"NT: {s}"
+            raise ValueError('Invalid language')
+    except KeyError:
+        print('NO TRANSLATION:', s)
+        return f"NT: {s}"
 
 
 def change_language(event=None):
@@ -500,7 +434,7 @@ def change_language(event=None):
 
     selected_language_key = lang_var.get() 
 
-    if selected_language_key not in LANGUAGES.keys():
+    if selected_language_key not in LANGUAGES:
         print(f"Warning: Selected language '{selected_language_key}' not recognized. Reverting to {LANGUAGE}.")
         if lang_combobox: lang_combobox.set(LANGUAGE) 
         return
@@ -528,7 +462,7 @@ if __name__ == '__main__':
 
     # Select language
     lang_var = StringVar(root)
-    language_options = list(LANGUAGES.keys()) 
+    language_options = LANGUAGES 
     lang_combobox = ttk.Combobox(frame_top, textvariable=lang_var, 
                                  values=language_options, state="readonly", width=12) 
     
@@ -536,7 +470,7 @@ if __name__ == '__main__':
         lang_combobox.set(LANGUAGE)
     else: 
         lang_combobox.set(language_options[0] if language_options else "")
-
+        
     lang_combobox.pack(side=tk.RIGHT, padx=(0,10), pady=5) 
     lang_combobox.bind("<<ComboboxSelected>>", change_language)
     # End of selecting language
@@ -545,12 +479,7 @@ if __name__ == '__main__':
     logo_label_widget = None
     if os.path.exists(LOGO_PATH):
         try:
-            #img = Image.open(LOGO_PATH)
-            #img = img.resize((80, 80), Image.Resampling.LANCZOS)
-            #widget = tk.Label(root, compound='top')
-            bb_img = tk.PhotoImage(file="image.png")
-            #bb_img = ImageTk.PhotoImage(img)
-
+            bb_img = tk.PhotoImage(file=LOGO_PATH)
             logo_label_widget = tk.Label(frame_top, image=bb_img, background="#00008B")
             logo_label_widget.image = bb_img 
             logo_label_widget.pack(side=tk.LEFT, padx=(0, 10)) 
@@ -581,11 +510,8 @@ if __name__ == '__main__':
     server_text.pack(side=tk.LEFT, padx=5)
     server_addr = ttk.Entry(frame_top, width=50, state="normal")
     server_addr.insert(0, SERVER)
-    #print("INPUT TEXT", server_addr.get().strip())
     server_addr.pack(side=tk.LEFT, padx=5)
-    #SERVER = server_addr.get().strip()
-    print("SERVER", SERVER)
-
+    
     # Search results
     tree_frame = tk.Frame(root)
     tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
