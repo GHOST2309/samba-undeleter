@@ -5,20 +5,20 @@ abi <abi/3.0>,
 include <tunables/global>
 
 @{exec_path} = /{,usr/}{,local/}bin/undeleter{,.py}
-@{shares} = /storage/public
+@{shares} = /storage/public /srv/public
 
 profile undeleter @{exec_path} {
   include <abstractions/base>
   include <abstractions/nameservice>
-#  include <abstractions/nameservice-strict>
+#  include <abstractions/nameservice-strict>  # prefer if available
   include <abstractions/consoles>
   include <abstractions/python>
 
   capability net_bind_service,
-#  capability dac_read_search,
-#  capability fowner,
+  capability dac_read_search,
+  capability dac_override,
+  capability fowner,
 #  capability fsetid,
-#  capability dac_override,
 
   network inet stream,
   network inet6 stream,
@@ -33,17 +33,14 @@ profile undeleter @{exec_path} {
   /{,usr/}bin/env rix,
   /{,usr/}bin/id rix,
 
-#  /{,usr/}bin/smbstatus rPUx,
-#  /{,usr/}bin/wbinfo rPUx,
-
   /var/log/samba/audit.log r,
   /var/log/samba/undeleter_recovered.log rw,
 
   deny /{dev/shm,tmp}/undeleter.am_i_confined.???????? w, # silence the check
-  deny /usr/{,local/}bin/ r,
+  deny /usr/{,local/}bin/ r,  # import lookup
 
   # apport debug hook from OS
-  # (/etc/python3.10/sitecustomize.py)
+  # (/etc/python3.*/sitecustomize.py)
   deny /etc/default/apport r,
   deny /etc/ssl/openssl.cnf r,
   deny /etc/apt/apt.conf.d/{,*} r,
